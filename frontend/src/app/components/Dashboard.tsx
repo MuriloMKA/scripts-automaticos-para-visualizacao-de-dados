@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   MessageSquare,
@@ -10,24 +11,61 @@ import {
   Zap,
   Target,
 } from "lucide-react";
+import { fetchDashboardSummary, type ScriptSummary } from "../lib/api";
 
-const recentScripts = [
+const fallbackScripts: ScriptSummary[] = [
   {
     id: 1,
-    title: "Produção por planta - Q1 2026",
-    type: "SQL",
-    date: "2 horas atrás",
+    question: "Produção por planta - Q1 2026",
+    output_format: "sql",
+    reply: "Exemplo de geração SQL",
+    script: "SELECT ...",
+    language: "sql",
+    created_at: new Date().toISOString(),
   },
-  {
-    id: 2,
-    title: "Faturamento por cliente",
-    type: "ABAP",
-    date: "5 horas atrás",
-  },
-  { id: 3, title: "Análise de estoque", type: "Power BI", date: "Ontem" },
 ];
 
 export function Dashboard() {
+  const [scriptsGenerated, setScriptsGenerated] = useState(52);
+  const [timeSavedHours, setTimeSavedHours] = useState(124);
+  const [successRate, setSuccessRate] = useState(94);
+  const [activeUsers, setActiveUsers] = useState(8);
+  const [recentScripts, setRecentScripts] =
+    useState<ScriptSummary[]>(fallbackScripts);
+
+  useEffect(() => {
+    let mounted = true;
+
+    fetchDashboardSummary()
+      .then((data) => {
+        if (!mounted) return;
+        setScriptsGenerated(data.scripts_generated);
+        setTimeSavedHours(data.time_saved_hours);
+        setSuccessRate(data.success_rate);
+        setActiveUsers(data.active_users);
+        setRecentScripts(
+          data.recent_scripts.length ? data.recent_scripts : fallbackScripts,
+        );
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setRecentScripts(fallbackScripts);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const formatTimeAgo = (createdAt: string) => {
+    const created = new Date(createdAt).getTime();
+    const diffHours = Math.max(
+      1,
+      Math.round((Date.now() - created) / (1000 * 60 * 60)),
+    );
+    return diffHours === 1 ? "1 hora atrás" : `${diffHours} horas atrás`;
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       {/* Welcome Section */}
@@ -88,7 +126,9 @@ export function Dashboard() {
               +12%
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-800 mb-1">52</p>
+          <p className="text-2xl font-bold text-slate-800 mb-1">
+            {scriptsGenerated}
+          </p>
           <p className="text-sm text-slate-600">Scripts gerados</p>
         </div>
 
@@ -101,7 +141,9 @@ export function Dashboard() {
               -23%
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-800 mb-1">124h</p>
+          <p className="text-2xl font-bold text-slate-800 mb-1">
+            {timeSavedHours}h
+          </p>
           <p className="text-sm text-slate-600">Tempo economizado</p>
         </div>
 
@@ -114,7 +156,9 @@ export function Dashboard() {
               +8%
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-800 mb-1">94%</p>
+          <p className="text-2xl font-bold text-slate-800 mb-1">
+            {successRate}%
+          </p>
           <p className="text-sm text-slate-600">Taxa de sucesso</p>
         </div>
 
@@ -124,7 +168,9 @@ export function Dashboard() {
               <Users className="w-5 h-5 text-orange-600" />
             </div>
           </div>
-          <p className="text-2xl font-bold text-slate-800 mb-1">8</p>
+          <p className="text-2xl font-bold text-slate-800 mb-1">
+            {activeUsers}
+          </p>
           <p className="text-sm text-slate-600">Usuários ativos</p>
         </div>
       </div>
@@ -178,14 +224,14 @@ export function Dashboard() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-slate-800 truncate">
-                    {script.title}
+                    {script.question}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">
-                      {script.type}
+                      {script.output_format.toUpperCase()}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {script.date}
+                      {formatTimeAgo(script.created_at)}
                     </span>
                   </div>
                 </div>

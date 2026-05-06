@@ -10,6 +10,7 @@ import {
   Check,
   Lightbulb,
 } from "lucide-react";
+import { sendChatMessage, type OutputFormat } from "../lib/api";
 
 type Message = {
   id: string;
@@ -22,8 +23,6 @@ type Message = {
   };
   visualization?: boolean;
 };
-
-type OutputFormat = "sql" | "abap" | "json" | "powerbi";
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
@@ -38,6 +37,7 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("sql");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
 
   const suggestedQuestions = [
     "Quero ver o volume de produção por planta nos últimos 3 meses",
@@ -59,43 +59,42 @@ export function ChatInterface() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    // Try to call backend API; if it fails, fallback to local simulated response
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input }),
+      const data = await sendChatMessage({
+        message: input,
+        output_format: outputFormat,
+        conversation_id: conversationId,
       });
 
-      if (!res.ok) throw new Error("bad response");
+      setConversationId(data.conversation_id);
 
-      const data = await res.json();
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "assistant",
-        content:
-          typeof data.reply === "string" ? data.reply : JSON.stringify(data),
+        content: data.reply,
         timestamp: new Date(),
-        code: generateCode(input, outputFormat),
+        code: {
+          language: data.language,
+          content: data.script,
+        },
       };
       setMessages((prev) => [...prev, assistantMessage]);
       return;
     } catch (err) {
-      // fallback: simulated response
       setTimeout(() => {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           type: "assistant",
           content: generateResponse(input, outputFormat),
           timestamp: new Date(),
-          code: generateCode(input, outputFormat),
+          code: generateCode(outputFormat),
         };
         setMessages((prev) => [...prev, assistantMessage]);
       }, 800);
     }
   };
 
-  const generateResponse = (question: string, format: OutputFormat): string => {
+  const generateResponse = (format: OutputFormat): string => {
     const responses = {
       sql: "Identifiquei que você precisa acessar as tabelas MSEG (Movimentos de Material) e MARC (Dados de Planta). Aqui está o script SQL otimizado:",
       abap: "Criei uma CDS View ABAP que acessa os dados necessários das tabelas SAP:",
@@ -106,7 +105,7 @@ export function ChatInterface() {
     return responses[format];
   };
 
-  const generateCode = (question: string, format: OutputFormat) => {
+  const generateCode = (format: OutputFormat) => {
     const codes = {
       sql: {
         language: "sql",
