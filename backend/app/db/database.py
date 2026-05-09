@@ -62,9 +62,27 @@ def initialize_database() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_generated_scripts_created_at
                 ON generated_scripts (created_at DESC);
+                
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                hashed_password TEXT NOT NULL,
+                full_name TEXT,
+                role TEXT DEFAULT 'user',
+                created_at TEXT NOT NULL
+            );
             """
         )
 
+def get_user_by_email(email: str):
+    with get_connection() as conn:
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+def create_user(email: str, hashed_pw: str, name: str):
+    with get_connection() as conn:
+        conn.execute("INSERT INTO users (email, hashed_password, full_name, created_at) VALUES (?,?,?,?)", 
+                    (email, hashed_pw, name, _now_iso()))
 
 def save_chat_message(conversation_id: str, role: str, content: str) -> None:
     with get_connection() as connection:

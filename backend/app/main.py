@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
+from .core.security import verify_password, create_access_token, hash_password
 from .db.database import (
     count_distinct_conversations,
     count_rows,
@@ -14,8 +15,10 @@ from .db.database import (
     list_recent_scripts,
     save_chat_message,
     save_generated_script,
+    get_user_by_email,
+    create_user,
 )
-from .models import ChatRequest, ChatResponse, DashboardSummary, HealthResponse, ScriptSummary
+from .models import ChatRequest, ChatResponse, DashboardSummary, HealthResponse, ScriptSummary, LoginRequest, RegisterRequest
 from .services.ai import generate_script
 
 load_dotenv()
@@ -50,6 +53,22 @@ def health() -> HealthResponse:
         ai_ready=bool(settings.openai_api_key),
     )
 
+@app.post("/api/auth/login")
+def login(payload: LoginRequest):
+    user = get_user_by_email(payload.email)
+    if not user or not verify_password(payload.password, user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
+    
+    token = create_access_token({"sub": user["email"]})
+    return {"access_token": token, "token_type": "bearer", "user": user}
+
+@app.post("/api/auth/register")
+def register(payload: RegisterRequest):
+    if get_user_by_email(payload.email):
+        raise HTTPException(status_code=400, detail="Email já cadastrado")
+    hashed = hash_password(payload.password)
+    create_user(payload.email, hashed, payload.full_name)
+    return {"status": "Usuário criado"}
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest) -> ChatResponse:

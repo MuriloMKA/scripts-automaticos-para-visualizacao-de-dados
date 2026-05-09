@@ -27,11 +27,35 @@ export type DashboardSummary = {
   recent_scripts: ScriptSummary[];
 };
 
-async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+async function requestJson<T>(
+  url: string,
+  init?: RequestInit
+): Promise<T> {
+  const token = localStorage.getItem("token");
+
+  const headers = {
+    ...init?.headers,
+    "Content-Type": "application/json",
+    ...(token
+      ? { Authorization: `Bearer ${token}` }
+      : {}),
+  };
+
+  const response = await fetch(url, {
+    ...init,
+    headers,
+  });
+
+  if (response.status === 401) {
+    localStorage.clear();
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
+  }
+
   if (!response.ok) {
     throw new Error(`Request failed: ${response.status}`);
   }
+
   return response.json() as Promise<T>;
 }
 
@@ -56,3 +80,15 @@ export function fetchDashboardSummary(): Promise<DashboardSummary> {
 export function fetchRecentScripts(): Promise<ScriptSummary[]> {
   return requestJson<ScriptSummary[]>("/api/scripts");
 }
+
+export const authApi = {
+  login: (p: any) =>
+    requestJson<{
+      access_token: string;
+      token_type: string;
+      user: any;
+    }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(p),
+    }),
+};
