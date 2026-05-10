@@ -52,3 +52,13 @@ class DashboardSummary(BaseModel):
     success_rate: int
     active_users: int
     recent_scripts: list[ScriptSummary]
+
+class RegisterRequest(BaseModel):
+    email: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+    full_name: str = Field(min_length=1)
+
+
+class LoginRequest(BaseModel):
+    email: str = Field(min_length=1)
+    password: str = Field(min_length=1)

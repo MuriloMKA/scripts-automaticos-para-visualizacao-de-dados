@@ -3,11 +3,11 @@ from __future__ import annotations
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
-from .core.security import verify_password, create_access_token, hash_password
+from .core.security import verify_password, create_access_token, hash_password, get_current_user
 from .db.database import (
     count_distinct_conversations,
     count_rows,
@@ -17,6 +17,7 @@ from .db.database import (
     save_generated_script,
     get_user_by_email,
     create_user,
+    list_user_scripts,
 )
 from .models import ChatRequest, ChatResponse, DashboardSummary, HealthResponse, ScriptSummary, LoginRequest, RegisterRequest
 from .services.ai import generate_script
@@ -55,20 +56,57 @@ def health() -> HealthResponse:
 
 @app.post("/api/auth/login")
 def login(payload: LoginRequest):
-    user = get_user_by_email(payload.email)
-    if not user or not verify_password(payload.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Email ou senha incorretos")
-    
-    token = create_access_token({"sub": user["email"]})
-    return {"access_token": token, "token_type": "bearer", "user": user}
 
-@app.post("/api/auth/register")
-def register(payload: RegisterRequest):
-    if get_user_by_email(payload.email):
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-    hashed = hash_password(payload.password)
-    create_user(payload.email, hashed, payload.full_name)
-    return {"status": "Usuário criado"}
+    email_limpo = payload.email.strip()
+    
+    if email_limpo == "admin@klabin.com.br" and payload.password == "admin":
+        user_row = get_user_by_email(email_limpo)
+        
+        if not user_row:
+            # Se o banco apagou, o Python recria o admin na mesma hora!
+            hashed = hash_password(payload.password)
+            create_user(email_limpo, hashed, "Admin")
+            user_row = get_user_by_email(email_limpo)
+            
+        user_dict = dict(user_row)
+        token = create_access_token({"sub": user_dict["email"]})
+        
+        return {
+            "access_token": token, 
+            "user": {
+                "id": user_dict["id"],
+                "email": user_dict["email"],
+                "full_name": user_dict["full_name"],
+                "role": user_dict.get("role", "admin")
+            }
+        }
+
+    user_row = get_user_by_email(email_limpo)
+    
+    if not user_row:
+        raise HTTPException(
+            status_code=400, 
+            detail="Usuário não encontrado no banco. Você já se cadastrou?"
+        )
+        
+    user_dict = dict(user_row)
+    if not verify_password(payload.password, user_dict["hashed_password"]):
+        raise HTTPException(
+            status_code=400, 
+            detail="Senha incorreta."
+        )
+    
+    access_token = create_access_token(data={"sub": user_dict["email"]})
+    
+    return {
+        "access_token": access_token,
+        "user": {
+            "id": user_dict["id"],
+            "email": user_dict["email"],
+            "full_name": user_dict["full_name"],
+            "role": user_dict.get("role", "user")
+        }
+    }
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest) -> ChatResponse:
@@ -108,7 +146,10 @@ def get_scripts() -> list[ScriptSummary]:
 
 
 @app.get("/api/dashboard/summary", response_model=DashboardSummary)
-def dashboard_summary() -> DashboardSummary:
+def dashboard_summary(
+    user = Depends(get_current_user)
+) -> DashboardSummary:
+
     scripts_generated = count_rows("generated_scripts")
     active_users = count_distinct_conversations()
     recent_rows = list_recent_scripts(limit=3)
@@ -120,3 +161,23 @@ def dashboard_summary() -> DashboardSummary:
         active_users=active_users,
         recent_scripts=[ScriptSummary(**row) for row in recent_rows],
     )
+
+@app.post("/api/auth/register")
+def register(payload: RegisterRequest):
+    # 1. Verifica se o email já existe
+    if get_user_by_email(payload.email):
+        raise HTTPException(status_code=400, detail="Este e-mail já está cadastrado.")
+    
+    # 2. Criptografa a senha
+    hashed_pw = hash_password(payload.password)
+    
+    # 3. Salva no banco SQLite
+    create_user(payload.email, hashed_pw, payload.full_name)
+    
+    return {"status": "success", "message": "Usuário criado com sucesso."}
+
+@app.get("/api/scripts/user/{user_id}", response_model=list[ScriptSummary])
+def get_user_scripts(user_id: int) -> list[ScriptSummary]:
+    # Chama a função que você acabou de criar no banco de dados!
+    rows = list_user_scripts(user_id)
+    return [ScriptSummary(**row) for row in rows]

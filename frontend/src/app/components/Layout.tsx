@@ -8,11 +8,14 @@ import {
   X,
   Sparkles,
   User,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "../lib/auth";
 // Use a simple public asset as placeholder (replace with real logo later)
 const klabinLogo = "/favicon.svg";
 
 export function Layout() {
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
 
@@ -90,18 +93,35 @@ export function Layout() {
           {sidebarOpen ? (
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5" />
+                <User className="w-5 h-5 text-slate-300" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">Marlon Fernando</p>
+                {/* Nome dinâmico puxado do banco/token */}
+                <p className="font-medium text-sm truncate text-white">
+                  {user?.full_name || "Usuário Logado"}
+                </p>
+                {/* Mostra se é Admin ou email */}
                 <p className="text-xs text-slate-400 truncate">
-                  Analytics Team
+                  {user?.role === "admin" ? "Administrador" : "Analista"}
                 </p>
               </div>
+              
+              {/* Botão de Sair */}
+              <button 
+                onClick={logout} 
+                className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
+                title="Sair do sistema"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-slate-600 rounded-full flex items-center justify-center mx-auto">
-              <User className="w-5 h-5" />
+            <div 
+              className="w-10 h-10 bg-slate-600 hover:bg-slate-500 cursor-pointer rounded-full flex items-center justify-center mx-auto transition-colors" 
+              onClick={logout}
+              title="Sair do sistema"
+            >
+              <LogOut className="w-5 h-5 text-slate-300" />
             </div>
           )}
         </div>

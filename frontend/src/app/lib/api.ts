@@ -82,13 +82,48 @@ export function fetchRecentScripts(): Promise<ScriptSummary[]> {
 }
 
 export const authApi = {
-  login: (p: any) =>
-    requestJson<{
-      access_token: string;
-      token_type: string;
-      user: any;
-    }>("/api/auth/login", {
+  login: async (credentials: { email: string; password: string }) => {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify(p),
-    }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credentials),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Falha na autenticação.";
+      try {
+        // Tenta ler o erro do Python
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        // Se o Python devolver vazio ou travar, cai aqui e não quebra a tela
+        errorMessage = `Erro no servidor Python (Status: ${response.status}). O Backend está rodando?`;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
+
+  register: async (data: { email: string; password: string; full_name: string }) => {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Erro ao cadastrar usuário.";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch (e) {
+        errorMessage = "Erro no servidor. Tente novamente.";
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.json();
+  },
 };
+

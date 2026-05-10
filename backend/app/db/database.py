@@ -48,13 +48,15 @@ def initialize_database() -> None:
 
             CREATE TABLE IF NOT EXISTS generated_scripts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
                 conversation_id TEXT NOT NULL,
                 question TEXT NOT NULL,
                 output_format TEXT NOT NULL,
                 reply TEXT NOT NULL,
                 script TEXT NOT NULL,
                 language TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id)
             );
 
             CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id
@@ -73,6 +75,22 @@ def initialize_database() -> None:
             );
             """
         )
+
+
+def ensure_default_user() -> None:
+    """Create default admin user if it doesn't exist"""
+    from ..core.security import hash_password
+    
+    default_email = "admin@klabin.com.br"
+    with get_connection() as connection:
+        existing_user = connection.execute("SELECT * FROM users WHERE email = ?", (default_email,)).fetchone()
+        
+        if not existing_user:
+            hashed_pw = hash_password("admin")
+            connection.execute(
+                "INSERT INTO users (email, hashed_password, full_name, created_at) VALUES (?,?,?,?)",
+                (default_email, hashed_pw, "Admin", _now_iso())
+            )
 
 def get_user_by_email(email: str):
     with get_connection() as conn:
@@ -102,16 +120,18 @@ def save_generated_script(
     reply: str,
     script: str,
     language: str,
+    user_id: int = 1,
 ) -> int:
     with get_connection() as connection:
         cursor = connection.execute(
             """
             INSERT INTO generated_scripts (
-                conversation_id, question, output_format, reply, script, language, created_at
+                user_id, conversation_id, question, output_format, reply, script, language, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                user_id,
                 conversation_id,
                 question,
                 output_format,
@@ -167,3 +187,31 @@ def count_distinct_conversations() -> int:
             "SELECT COUNT(DISTINCT conversation_id) AS total FROM chat_messages"
         ).fetchone()
     return int(row["total"] if row else 0)
+
+def list_user_scripts(user_id: int) -> list[dict[str, Any]]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, question, output_format, reply, script, language, created_at 
+            FROM generated_scripts 
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (user_id,)
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+def fetch_summary_for_user(user_id: int):
+    with get_connection() as conn:
+        scripts = conn.execute(
+            "SELECT COUNT(*) as total FROM generated_scripts WHERE user_id = ?", 
+            (user_id,)
+        ).fetchone()["total"]
+        
+        # Simulação de horas baseada nos scripts do usuário
+        return {
+            "scripts_generated": scripts,
+            "time_saved_hours": round(scripts * 2.4, 1),
+            "active_users": 1, # O próprio usuário
+            "success_rate": 94 if scripts > 0 else 0
+        }
