@@ -27,6 +27,19 @@ export type DashboardSummary = {
   recent_scripts: ScriptSummary[];
 };
 
+export type DashboardStats = {
+  usage_by_day: Array<{ day: string; date: string; count: number }>;
+  scripts_by_format: Array<{ name: string; count: number }>;
+  time_saved_by_month: Array<{ month: string; hours: number }>;
+};
+
+export type SapPreviewResponse = {
+  entity_path: string;
+  count: number;
+  rows: Array<Record<string, any>>;
+  source_url: string;
+};
+
 async function requestJson<T>(
   url: string,
   init?: RequestInit
@@ -77,8 +90,26 @@ export function fetchDashboardSummary(): Promise<DashboardSummary> {
   return requestJson<DashboardSummary>("/api/dashboard/summary");
 }
 
+export function fetchDashboardStats(): Promise<DashboardStats> {
+  return requestJson<DashboardStats>("/api/dashboard/stats");
+}
+
 export function fetchRecentScripts(): Promise<ScriptSummary[]> {
   return requestJson<ScriptSummary[]>("/api/scripts");
+}
+
+export function fetchSapPreviewData(
+  entity_path: string,
+  top: number = 50,
+  select?: string[]
+): Promise<SapPreviewResponse> {
+  return requestJson<SapPreviewResponse>("/api/sap/query/preview", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ entity_path, top, select }),
+  });
 }
 
 export const authApi = {

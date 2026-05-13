@@ -11,6 +11,7 @@ from .core.security import verify_password, create_access_token, hash_password, 
 from .db.database import (
     count_distinct_conversations,
     count_rows,
+    ensure_default_user,
     initialize_database,
     list_recent_scripts,
     save_chat_message,
@@ -18,9 +19,25 @@ from .db.database import (
     get_user_by_email,
     create_user,
     list_user_scripts,
+    get_scripts_by_day,
+    get_scripts_by_format,
+    get_time_saved_by_month,
 )
-from .models import ChatRequest, ChatResponse, DashboardSummary, HealthResponse, ScriptSummary, LoginRequest, RegisterRequest
+from .models import (
+    ChatRequest,
+    ChatResponse,
+    DashboardSummary,
+    DashboardStats,
+    HealthResponse,
+    LoginRequest,
+    RegisterRequest,
+    SapHealthResponse,
+    SapPreviewRequest,
+    SapPreviewResponse,
+    ScriptSummary,
+)
 from .services.ai import generate_script
+from .services.sap import health_check as sap_health_check, preview_odata_entity
 
 load_dotenv()
 
@@ -44,14 +61,19 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event() -> None:
     initialize_database()
+    ensure_default_user()
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
+    sap_info = sap_health_check()
     return HealthResponse(
         status="ok",
         database_ready=True,
         ai_ready=bool(settings.openai_api_key),
+        sap_ready=sap_info.ready,
+        sap_provider=sap_info.provider,
+        sap_message=sap_info.message,
     )
 
 @app.post("/api/auth/login")
@@ -162,6 +184,26 @@ def dashboard_summary(
         recent_scripts=[ScriptSummary(**row) for row in recent_rows],
     )
 
+
+@app.get("/api/dashboard/stats", response_model=DashboardStats)
+def dashboard_stats(
+    user = Depends(get_current_user)
+) -> DashboardStats:
+    """
+    Get aggregated statistics for analytics dashboard.
+    Returns scripts per day, by format, and time saved per month.
+    """
+    usage_by_day = get_scripts_by_day(days=7)
+    scripts_by_format = get_scripts_by_format()
+    time_saved_by_month = get_time_saved_by_month(months=6)
+    
+    return DashboardStats(
+        usage_by_day=usage_by_day,
+        scripts_by_format=scripts_by_format,
+        time_saved_by_month=time_saved_by_month,
+    )
+
+
 @app.post("/api/auth/register")
 def register(payload: RegisterRequest):
     # 1. Verifica se o email já existe
@@ -181,3 +223,31 @@ def get_user_scripts(user_id: int) -> list[ScriptSummary]:
     # Chama a função que você acabou de criar no banco de dados!
     rows = list_user_scripts(user_id)
     return [ScriptSummary(**row) for row in rows]
+
+
+@app.get("/api/sap/health", response_model=SapHealthResponse)
+def sap_health(user = Depends(get_current_user)) -> SapHealthResponse:
+    sap_info = sap_health_check()
+    return SapHealthResponse(
+        status="ok" if sap_info.ready else "not_ready",
+        provider=sap_info.provider,
+        ready=sap_info.ready,
+        message=sap_info.message,
+        base_url=sap_info.base_url,
+    )
+
+
+@app.post("/api/sap/query/preview", response_model=SapPreviewResponse)
+def sap_query_preview(payload: SapPreviewRequest, user = Depends(get_current_user)) -> SapPreviewResponse:
+    try:
+        data = preview_odata_entity(
+            entity_path=payload.entity_path,
+            top=payload.top,
+            select=payload.select,
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Erro ao consultar SAP: {exc}")
+
+    return SapPreviewResponse(**data)

@@ -6,13 +6,10 @@ import {
   BarChart3,
   Menu,
   X,
-  Sparkles,
   User,
   LogOut,
 } from "lucide-react";
 import { useAuth } from "../lib/auth";
-// Use a simple public asset as placeholder (replace with real logo later)
-const klabinLogo = "/favicon.svg";
 
 export function Layout() {
   const { user, logout } = useAuth();
@@ -38,9 +35,6 @@ export function Layout() {
           {sidebarOpen ? (
             <>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <Sparkles className="w-6 h-6" />
-                </div>
                 <div>
                   <h1 className="font-bold text-sm">SAP Script AI</h1>
                   <p className="text-xs text-slate-400">Klabin</p>
@@ -75,7 +69,7 @@ export function Layout() {
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all ${
                   isActive
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg shadow-blue-500/50"
+                    ? "bg-white/10 text-white shadow-lg shadow-black/20"
                     : "hover:bg-slate-700/50"
                 } ${!sidebarOpen && "justify-center"}`}
               >
@@ -105,10 +99,10 @@ export function Layout() {
                   {user?.role === "admin" ? "Administrador" : "Analista"}
                 </p>
               </div>
-              
+
               {/* Botão de Sair */}
-              <button 
-                onClick={logout} 
+              <button
+                onClick={logout}
                 className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
                 title="Sair do sistema"
               >
@@ -116,8 +110,8 @@ export function Layout() {
               </button>
             </div>
           ) : (
-            <div 
-              className="w-10 h-10 bg-slate-600 hover:bg-slate-500 cursor-pointer rounded-full flex items-center justify-center mx-auto transition-colors" 
+            <div
+              className="w-10 h-10 bg-slate-600 hover:bg-slate-500 cursor-pointer rounded-full flex items-center justify-center mx-auto transition-colors"
               onClick={logout}
               title="Sair do sistema"
             >
@@ -132,13 +126,9 @@ export function Layout() {
         {/* Top Bar */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img src={klabinLogo} alt="Klabin" className="h-10" />
-            <div className="border-l pl-4 hidden md:block">
-              <p className="text-sm font-medium text-slate-700">
-                Projeto Acadêmico - TI
-              </p>
-              <p className="text-xs text-slate-500">
-                Record to Report | Abdul Latif
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                Scripts automáticos para visualização de dados
               </p>
             </div>
           </div>

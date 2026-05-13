@@ -81,7 +81,7 @@ export function Dashboard() {
       {/* Quick Action - Chat */}
       <Link
         to="/chat"
-        className="group bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-8 text-white hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 mb-8 block"
+        className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl p-8 text-white hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 mb-8 block hover:text-white"
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
@@ -89,15 +89,15 @@ export function Dashboard() {
               <MessageSquare className="w-8 h-8" />
             </div>
             <div>
-              <h2 className="font-bold text-2xl mb-1">
+              <h2 className="font-bold text-2xl mb-1 text-white/80 hover:text-white/80">
                 Iniciar Conversa com IA
               </h2>
-              <p className="text-blue-100">
+              <p className="text-white/80 hover:text-white/80">
                 Faça perguntas em linguagem natural e receba scripts prontos
               </p>
             </div>
           </div>
-          <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform" />
+          <ArrowRight className="w-8 h-8 transition-transform hover:translate-x-2" />
         </div>
         <div className="flex gap-4 text-sm">
           <div className="px-3 py-2 bg-white/10 backdrop-blur-sm rounded-lg">

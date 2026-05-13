@@ -39,14 +39,14 @@ def verify_password(
 def create_access_token(data: dict):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(minutes=480)
+    expire = datetime.utcnow() + timedelta(minutes=SETTINGS.jwt_expire_minutes)
 
     to_encode.update({"exp": expire})
 
     return jwt.encode(
         to_encode,
-        "SUPER_SECRET_KEY",
-        algorithm="HS256",
+        SETTINGS.jwt_secret_key,
+        algorithm=SETTINGS.jwt_algorithm,
     )
 
 
@@ -62,8 +62,8 @@ def get_current_user(
     try:
         payload = jwt.decode(
             token,
-            "SUPER_SECRET_KEY",
-            algorithms=["HS256"],
+            SETTINGS.jwt_secret_key,
+            algorithms=[SETTINGS.jwt_algorithm],
         )
 
         email: str = payload.get("sub")

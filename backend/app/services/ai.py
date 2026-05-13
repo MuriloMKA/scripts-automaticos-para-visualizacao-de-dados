@@ -131,7 +131,11 @@ def generate_script(question: str, output_format: str) -> GeneratedScript:
     except (urllib.error.URLError, TimeoutError, ValueError):
         return build_local_response(question, output_format)
 
-    content = response_payload["choices"][0]["message"]["content"]
+    try:
+        content = response_payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError):
+        return build_local_response(question, output_format)
+
     try:
         parsed = json.loads(content)
     except json.JSONDecodeError:

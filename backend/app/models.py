@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 OutputFormat = Literal["sql", "abap", "json", "powerbi"]
@@ -44,6 +44,9 @@ class HealthResponse(BaseModel):
     status: str
     database_ready: bool
     ai_ready: bool
+    sap_ready: bool = False
+    sap_provider: str | None = None
+    sap_message: str | None = None
 
 
 class DashboardSummary(BaseModel):
@@ -52,6 +55,13 @@ class DashboardSummary(BaseModel):
     success_rate: int
     active_users: int
     recent_scripts: list[ScriptSummary]
+
+
+class DashboardStats(BaseModel):
+    usage_by_day: list[dict[str, Any]] = Field(description="Scripts per day for last 7 days")
+    scripts_by_format: list[dict[str, Any]] = Field(description="Script count grouped by output format")
+    time_saved_by_month: list[dict[str, Any]] = Field(description="Time saved per month for last 6 months")
+
 
 class RegisterRequest(BaseModel):
     email: str = Field(min_length=1)
@@ -62,3 +72,24 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str = Field(min_length=1)
     password: str = Field(min_length=1)
+
+
+class SapHealthResponse(BaseModel):
+    status: str
+    provider: str
+    ready: bool
+    message: str
+    base_url: str | None = None
+
+
+class SapPreviewRequest(BaseModel):
+    entity_path: str = Field(min_length=1, description="Caminho da entidade OData, ex: sap/opu/odata/.../EntitySet")
+    top: int = Field(default=50, ge=1, le=500)
+    select: list[str] | None = Field(default=None, description="Lista de campos a selecionar")
+
+
+class SapPreviewResponse(BaseModel):
+    entity_path: str
+    count: int
+    rows: list[dict[str, Any]]
+    source_url: str

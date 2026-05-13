@@ -6,6 +6,12 @@ import os
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
+
+
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(_ENV_PATH)
+
 
 @dataclass(frozen=True)
 class Settings:
@@ -20,6 +26,13 @@ class Settings:
     openai_base_url: str = "https://api.openai.com"
     openai_model: str = "gpt-4o-mini"
     request_timeout_seconds: int = 60
+    jwt_secret_key: str = "CHANGE_ME_IN_ENV"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 480
+    sap_connector_type: str = "odata"
+    sap_odata_base_url: str = ""
+    sap_odata_username: str = ""
+    sap_odata_password: str = ""
 
     def __post_init__(self) -> None:
         if self.cors_origins is None:
@@ -47,5 +60,12 @@ def get_settings() -> Settings:
         openai_base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com"),
         openai_model=os.getenv("MODEL_NAME", "gpt-4o-mini"),
         request_timeout_seconds=int(os.getenv("REQUEST_TIMEOUT_SECONDS", "60")),
+        jwt_secret_key=os.getenv("JWT_SECRET_KEY", "CHANGE_ME_IN_ENV"),
+        jwt_algorithm=os.getenv("JWT_ALGORITHM", "HS256"),
+        jwt_expire_minutes=int(os.getenv("JWT_EXPIRE_MINUTES", "480")),
+        sap_connector_type=os.getenv("SAP_CONNECTOR_TYPE", "odata"),
+        sap_odata_base_url=os.getenv("SAP_ODATA_BASE_URL", ""),
+        sap_odata_username=os.getenv("SAP_ODATA_USERNAME", ""),
+        sap_odata_password=os.getenv("SAP_ODATA_PASSWORD", ""),
     )
     return settings
