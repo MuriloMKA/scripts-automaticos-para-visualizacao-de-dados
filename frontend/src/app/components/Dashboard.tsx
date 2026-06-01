@@ -5,11 +5,11 @@ import {
   TrendingUp,
   Clock,
   FileCode2,
-  Users,
   ArrowRight,
   Sparkles,
   Zap,
   Target,
+  FileDown,
 } from "lucide-react";
 import { fetchDashboardSummary, type ScriptSummary } from "../lib/api";
 
@@ -26,10 +26,9 @@ const fallbackScripts: ScriptSummary[] = [
 ];
 
 export function Dashboard() {
-  const [scriptsGenerated, setScriptsGenerated] = useState(52);
-  const [timeSavedHours, setTimeSavedHours] = useState(124);
-  const [successRate, setSuccessRate] = useState(94);
-  const [activeUsers, setActiveUsers] = useState(8);
+  const [scriptsGenerated, setScriptsGenerated] = useState(0);
+  const [timeSavedHours, setTimeSavedHours] = useState(0);
+  const [successRate, setSuccessRate] = useState(0);
   const [recentScripts, setRecentScripts] =
     useState<ScriptSummary[]>(fallbackScripts);
 
@@ -42,7 +41,6 @@ export function Dashboard() {
         setScriptsGenerated(data.scripts_generated);
         setTimeSavedHours(data.time_saved_hours);
         setSuccessRate(data.success_rate);
-        setActiveUsers(data.active_users);
         setRecentScripts(
           data.recent_scripts.length ? data.recent_scripts : fallbackScripts,
         );
@@ -66,16 +64,83 @@ export function Dashboard() {
     return diffHours === 1 ? "1 hora atrás" : `${diffHours} horas atrás`;
   };
 
+  const exportDashboardPDF = () => {
+    const date = new Date().toLocaleString("pt-BR");
+    const scriptRows = recentScripts
+      .map(
+        (s) => `
+        <tr>
+          <td>${s.question}</td>
+          <td><span class="badge">${s.output_format.toUpperCase()}</span></td>
+          <td>${formatTimeAgo(s.created_at)}</td>
+        </tr>`,
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório Dashboard SAP Script AI</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 860px; margin: 0 auto; padding: 32px; color: #1e293b; }
+  h1 { font-size: 22px; color: #2563eb; margin-bottom: 4px; }
+  .meta { font-size: 12px; color: #94a3b8; margin-bottom: 32px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: center; }
+  .stat-value { font-size: 28px; font-weight: 700; color: #1e293b; }
+  .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+  h2 { font-size: 16px; margin-bottom: 12px; color: #334155; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; }
+  td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+  .badge { background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  @media print { body { padding: 16px; } }
+</style>
+</head>
+<body>
+<h1>Relatório Dashboard — SAP Script AI</h1>
+<div class="meta">Exportado em ${date}</div>
+<div class="stats">
+  <div class="stat"><div class="stat-value">${scriptsGenerated}</div><div class="stat-label">Scripts gerados</div></div>
+  <div class="stat"><div class="stat-value">${timeSavedHours}h</div><div class="stat-label">Tempo economizado</div></div>
+  <div class="stat"><div class="stat-value">${successRate}%</div><div class="stat-label">Taxa de sucesso</div></div>
+</div>
+<h2>Scripts Recentes</h2>
+<table>
+  <thead><tr><th>Pergunta</th><th>Formato</th><th>Gerado</th></tr></thead>
+  <tbody>${scriptRows}</tbody>
+</table>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
+  };
+
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
       {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">
-          Bem-vindo ao SAP Script AI
-        </h1>
-        <p className="text-slate-600">
-          Geração automatizada de scripts para visualização de dados SAP
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+            Bem-vindo ao SAP Script AI
+          </h1>
+          <p className="text-slate-600">
+            Geração automatizada de scripts para visualização de dados SAP
+          </p>
+        </div>
+        <button
+          onClick={exportDashboardPDF}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm flex-shrink-0"
+        >
+          <FileDown className="w-4 h-4" />
+          Exportar relatório
+        </button>
       </div>
 
       {/* Quick Action - Chat */}
@@ -116,7 +181,7 @@ export function Dashboard() {
       </Link>
 
       {/* Stats Grid */}
-      <div className="grid md:grid-cols-4 gap-4 md:gap-6 mb-8">
+      <div className="grid md:grid-cols-3 gap-4 md:gap-6 mb-8">
         <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -160,18 +225,6 @@ export function Dashboard() {
             {successRate}%
           </p>
           <p className="text-sm text-slate-600">Taxa de sucesso</p>
-        </div>
-
-        <div className="bg-white rounded-xl p-6 border border-slate-200 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Users className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-slate-800 mb-1">
-            {activeUsers}
-          </p>
-          <p className="text-sm text-slate-600">Usuários ativos</p>
         </div>
       </div>
 

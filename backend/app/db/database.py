@@ -219,6 +219,20 @@ def list_user_scripts(user_id: int) -> list[dict[str, Any]]:
         ).fetchall()
     return [dict(row) for row in rows]
 
+def list_user_scripts_recent(user_id: int, limit: int = 3) -> list[dict[str, Any]]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT id, question, output_format, reply, script, language, created_at 
+            FROM generated_scripts 
+            WHERE user_id = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (user_id, limit)
+        ).fetchall()
+    return [dict(row) for row in rows]
+
 def fetch_summary_for_user(user_id: int):
     with get_connection() as conn:
         scripts = conn.execute(
