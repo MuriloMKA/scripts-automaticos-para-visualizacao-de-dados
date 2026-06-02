@@ -99,3 +99,5 @@
 - Demonstra viabilidade real de IA aplicada ao contexto SAP
 - Base solida e pronta para evoluir com conector SAP real
 
+aa
+
